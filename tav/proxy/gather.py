@@ -36,7 +36,7 @@ class GatherProxy(ProxyGatherer):
     def __init__(self, countries=None):
         self.countries = countries
         if self.countries is None:
-            self.countries = self.get_country_list()
+            self.countries = list(self.get_country_list())
 
     def get_country_list(self):
         r = requests.get('http://www.gatherproxy.com/proxylistbycountry')
@@ -44,10 +44,12 @@ class GatherProxy(ProxyGatherer):
         h = html.document_fromstring(r.text)
 
         for e in h.cssselect('.pc-list li a'):
-            yield re.match('\w+', e.text).group(0)
+            yield re.match('[^\(]+', e.text).group(0).strip()
 
     def get(self):
+#        print(self.countries)
         for country in self.countries:
+            #print(country)
             r = requests.post(
                 GatherProxy.URL, data={'Country': country, 'PageIdx': 1}
             )

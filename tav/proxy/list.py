@@ -39,12 +39,12 @@ class ProxyList(object):
 
     def get(self):
         ret = self._working[self._current_index]
-        self._current_index = (self._current_index + 1) % len(self._working)
+        self._current_index = (self._current_index + 1) % (len(self._working) or 1)
         return ret
 
     def pop(self):
         ret = self._working.pop()
-        self._current_index = (self._current_index + 1) % len(self._working)
+        self._current_index = (self._current_index + 1) % (len(self._working) or 1)
         return ret
 
     def has_unchecked(self):
@@ -63,7 +63,7 @@ class ProxyList(object):
         ]:
             if fobj is not None:
                 for proxy in proxies:
-                    working.write('{}:{}\n'.format(proxy.ip, proxy.port))
+                    fobj.write('{}:{}\n'.format(proxy.ip, proxy.port))
 
     def add(self, proxy, working):
         if working:

@@ -3,6 +3,7 @@ from tav.proxy.list import ProxyList
 
 import concurrent.futures
 import livestreamer
+import functools
 import traceback
 import requests
 import time
@@ -16,6 +17,7 @@ HEADERS = {
     'Connection': 'keep-alive'
 }
 
+TIMEOUT = 5
 
 class ViewerBot(object):
     def __init__(self, twitch, verbose=False):
@@ -27,7 +29,7 @@ class ViewerBot(object):
 
     def check(self, max_threads=75):
         self.print('[+] Checking proxies')
-        total, working = self.proxies.check_proxies(max_threads, timeout=5)
+        total, working = self.proxies.check_proxies(max_threads, timeout=TIMEOUT)
         self.print('\n[+] {} of {} proxies work!'.format(working, total))
         self.print('[+] Using {} working proxies'.format(len(self.proxies)))
 
@@ -47,53 +49,87 @@ class ViewerBot(object):
 
         print('[+] Launching {} viewer-threads for {} viewers'.format(viewer_threads, viewers))
 
-        all_proxies = list(self.proxies)
-        used_proxies = ProxyList.from_iterable(all_proxies[:viewers], True)
-        unused_proxies = ProxyList.from_iterable(all_proxies[viewers:], True)
-        new_proxies = 0
+        proxies = ProxyList.from_iterable(iter(self.proxies), True)
 
         errors = list()
         with concurrent.futures.ThreadPoolExecutor(max_workers=viewer_threads) as executor:
-            futures = [executor.submit(self.view, self.proxies.get()) for i in range(viewers)]
+            futures = list()
 
-            for i, future in enumerate(concurrent.futures.as_completed(futures)):
-                (url, proxy) = (None, None)
+            def callback(session, future):
+                try:
+                    futures.remove(future)
+                except ValueError:
+                    # TODO find out why
+                    pass
+
                 try:
                     (url, proxy) = future.result()
                 except Exception as e:
-#                    pass
+                    #traceback.print_exc()
                     errors.append(e)
-                    traceback.print_exc()
+                    (url, proxy) = (None, None)
 
-                if url is None:
-                    if len(unused_proxies) == 0:
-                        self.print('[!] No more proxies!')
-                        continue
+                if proxy is None:
+                    if len(proxies) == 0:
+                        self.print_raw('[!] No more proxies! {} still running                  \r'.format(len(futures)))
+                        return
 
-                    new_proxies += 1
-                    self.print_raw('[?] {} - Another connection dropped out ... \r'.format(new_proxies))
-                    proxy = unused_proxies.pop()
+                    self.print_raw('[?] Another connection dropped out ... {} proxies left            \r'.format(len(proxies)))
+                    proxy = proxies.pop()
 
-                futures.append(executor.submit(self.view, proxy, url))
+                future = executor.submit(self.view, proxy, session)
+                future.add_done_callback(functools.partial(callback, session))
+                futures.append(future)
 
-        print(errors[0])
+            for i in range(viewers):
+                session = livestreamer.Livestreamer()
+                future = executor.submit(self.view, proxies.pop(), session)
 
-    def view(self, proxy, url=None):
+                future.add_done_callback(functools.partial(callback, session))
+                futures.append(future)
+
+            while len(futures) > 0:
+                try:
+                    time.sleep(1.0)
+                except KeyError:
+                    self.print('\n[+] Stopping ...')
+                    break
+
+            self.print('\n[!] {} Errors'.format(len(errors)))
+
+            for error in errors:
+                self.print(error)
+
+    def view(self, proxy, session, url=None, timeout=TIMEOUT):
         httpproxy = 'http://{p.ip}:{p.port}'.format(p=proxy)
 
-        session = livestreamer.Livestreamer()
-        session.set_option('http-proxy', httpproxy)
-
         if url is None:
+            session.set_option('http-proxy', httpproxy)
+            session.set_option('http-headers', HEADERS)
+            session.set_option('http-timeout', timeout)
+
             try:
                 stream = session.streams(self.url)
                 url = stream['worst'].url
             except Exception:
                 return (None, None)
 
-        requests.head(url, headers=HEADERS, proxies={'http': httpproxy})
+        #fd = stream['worst'].open()
 
-        return url, proxy
+        errors = 0
+        while errors < 500:
+            try:
+                requests.head(
+                    url, headers=HEADERS, proxies={'http': httpproxy}, timeout=timeout
+                )
+            except Exception:
+                errors += 10
+            else:
+                errors -= 1
+
+            time.sleep(0.3)
+
+        return (None, None)
 
     def print(self, *args, **kwargs):
         if self.verbose:
