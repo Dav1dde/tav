@@ -101,7 +101,7 @@ class SqliteProxyDatabase(object):
 
                 score INTEGER,
                 checked INTEGER DEFAULT 0,
-                delay INTEGER,
+                delay REAL,
 
                 PRIMARY KEY (ip, port)
             )

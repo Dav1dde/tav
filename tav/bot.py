@@ -65,7 +65,7 @@ class ViewerBot(object):
                     errors.append(e)
 
                 futures.remove(future)
-                self.print_raw('[?] Connection dropped out. {} left\t\t\t\r'.format(len(futures)))
+                self.print_raw('[?] Connection dropped out. {} left    \r'.format(len(futures)))
 
             for _ in range(viewers):
                 future = executor.submit(self.view_future, proxy_queue)
@@ -73,7 +73,7 @@ class ViewerBot(object):
                 futures.append(future)
 
             while len(futures) > 0:
-                self.print_raw('[?] {} proxies left\t\t\t\t\t\r'.format(proxy_queue.qsize()))
+                self.print_raw('[?] {} proxies left    \r'.format(proxy_queue.qsize()))
                 time.sleep(1.0)
 
         self.print('\n[!] {} Errors'.format(len(errors)))

@@ -79,8 +79,12 @@ class GatherProxy(ProxyGatherer):
         h = html.document_fromstring(r.text)
         entries = h.cssselect('table tr:nth-child(n+3)')
 
-        for (last_update, ip, port, anonlevel,
-             country, city, uptime, response_time) in entries:
+        for entry in entries:
+            if len(entry) < 8:
+                continue
+            (last_update, ip, port, anonlevel,
+             country, city, uptime, response_time) = entry
+            
             ip = self.extract_script_text(ip)
             port = self.extract_script_text(port)
 

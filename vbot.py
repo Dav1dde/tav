@@ -9,12 +9,7 @@ PROXY_DATABASE = os.path.join(os.path.abspath(os.path.split(__file__)[0]), 'prox
 
 
 def main():
-    bot = tav.bot.ViewerBot(sys.argv[1], timeout=1, verbose=True)
-#    bot.proxies.add_file(PROXY_FILE_ALL, False)
-#    bot.check(750)
-
-#    with open(PROXY_FILE_WORKING, 'w') as f:
-#        bot.proxies.save_to_fobj(f, None)
+    bot = tav.bot.ViewerBot(sys.argv[1], timeout=5, verbose=True)
 
     with tav.proxy.database.SqliteProxyDatabase(PROXY_DATABASE) as db:
         proxies = db.load(0.5)
