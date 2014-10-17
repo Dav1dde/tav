@@ -40,7 +40,7 @@ def main():
     bot = tav.bot.ViewerBot(ns.name, timeout=ns.timeout, verbose=True)
 
     with tav.proxy.database.SqliteProxyDatabase(PROXY_DATABASE) as db:
-        proxies = db.load(0.5)
+        proxies = db.load(0.3)
 
     bot.proxies.add_working_proxies(proxies)
 
