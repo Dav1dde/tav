@@ -1,7 +1,7 @@
 from tav.proxy import Proxy
 
+from datetime import datetime
 import concurrent.futures
-import datetime
 import requests
 import sys
 
