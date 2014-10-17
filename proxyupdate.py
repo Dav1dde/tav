@@ -21,10 +21,13 @@ def database():
     #tav.proxy.database.SqliteProxyDatabase.create(PROXY_DATABASE)
 
     with tav.proxy.database.SqliteProxyDatabase(PROXY_DATABASE) as db:
-        for proxy in tav.proxy.gather.USProxy().get():
+        for i, proxy in enumerate(tav.proxy.gather.gather()):
+            sys.stdout.write('[?] Adding proxy {}/? \r'.format(i+1))
+            sys.stdout.flush()
+
             db.add_safe(proxy)
 
-        db.update_score(50, 5, fun=tav.proxy.list.ProxyList.progress_fun)
+        db.update_score(500, 5, fun=tav.proxy.list.ProxyList.progress_fun)
 
 
 def main():

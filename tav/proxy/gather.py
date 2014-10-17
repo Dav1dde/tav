@@ -12,7 +12,8 @@ def gather():
         chain(
             GatherProxy().get(),
             USProxy().get(),
-            UKProxy().get()
+            UKProxy().get(),
+            Samair().get()
         )
     )
 
@@ -75,7 +76,6 @@ class GatherProxy(ProxyGatherer):
         r = requests.post(
             GatherProxy.URL, data={'Country': country, 'PageIdx': idx}
         )
-
         h = html.document_fromstring(r.text)
         entries = h.cssselect('table tr:nth-child(n+3)')
 
@@ -85,7 +85,9 @@ class GatherProxy(ProxyGatherer):
             port = self.extract_script_text(port)
 
             yield Proxy(
-                ip, port, country=country, anonlevel=anonlevel.text
+                ip, port,
+                country=country.text, anonlevel=anonlevel.text,
+                source=self.__class__.__name__
             )
 
     @staticmethod
@@ -101,7 +103,6 @@ class USProxy(ProxyGatherer):
 
     def get(self):
         r = requests.get(self.URL)
-
         h = html.document_fromstring(r.text)
         entries = h.cssselect('#proxylisttable tr:nth-child(n+2)')
 
@@ -109,11 +110,47 @@ class USProxy(ProxyGatherer):
              anonlevel, google, https, last_update) in entries:
             yield Proxy(
                 ip.text, port.text, country=country_long.text,
-                anonlevel=anonlevel.text, https=(https.text.lower() == 'yes')
+                anonlevel=anonlevel.text, https=(https.text.lower() == 'yes'),
+                source=self.__class__.__name__
             )
 
 
 class UKProxy(USProxy):
     URL = 'http://free-proxy-list.net/uk-proxy.html'
+
+
+class Samair(ProxyGatherer):
+    URL = 'http://www.samair.ru/proxy/'
+
+    def __init__(self):
+        ProxyGatherer.__init__(self)
+
+    def get(self):
+        h = html.parse(self.URL).getroot()
+        h.make_links_absolute(self.URL)
+        urls = set(
+            re.sub('-(\d)\.', '-0\\1.', e.get('href'))
+            for e in h.cssselect('.page')
+        )
+
+        for url in urls:
+            h = html.parse(url).getroot()
+            h.make_links_absolute(self.URL)
+
+            h.cssselect('#advcenter')[0].getparent().drop_tree()
+            entries = h.cssselect('#proxylist tr:nth-child(n+2)')
+            data_url = h.cssselect('#ipportonly > a')[0].get('href')
+
+            h = html.parse(data_url).getroot()
+            data = h.cssselect('#content pre')[0].text
+
+            for i, line in enumerate(data.splitlines()):
+                ip, port = line.split(':')
+
+                yield Proxy(
+                    ip, port,
+                    country=entries[i][3].text, anonlevel=entries[i][1].text,
+                    source=self.__class__.__name__
+                )
 
 

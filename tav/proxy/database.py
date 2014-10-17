@@ -29,14 +29,15 @@ class SqliteProxyDatabase(object):
 
     def add(self, proxy):
         self.cursor.execute('''
-            INSERT INTO Proxy VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Proxy VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', proxy)
 
     def add_safe(self, proxy):
         try:
             self.add(proxy)
         except sqlite3.IntegrityError:
-            pass
+            return False
+        return True
 
     def load(self, relscore=0.0):
         proxies = list()
@@ -55,7 +56,7 @@ class SqliteProxyDatabase(object):
         return proxies
 
     def update_score(self, num_threads, timeout, fun=None):
-        proxies = self.load()
+        proxies = self.load(0)
         num_proxies = len(proxies)
 
         for i, (proxy, works) in tav.proxy.check.check_proxies(
@@ -93,11 +94,13 @@ class SqliteProxyDatabase(object):
                 port INTEGER,
 
                 score INTEGER,
+                checked INTEGER DEFAULT 0,
+
+                source TEXT,
+
                 country TEXT,
                 anonlevel TEXT,
                 https BOOLEAN,
-
-                checked INTEGER DEFAULT 0,
 
                 PRIMARY KEY (ip, port)
             )
