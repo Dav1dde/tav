@@ -29,7 +29,7 @@ class SqliteProxyDatabase(object):
 
     def add(self, proxy):
         self.cursor.execute('''
-            INSERT INTO Proxy VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Proxy VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', proxy)
 
     def add_safe(self, proxy):
@@ -59,17 +59,17 @@ class SqliteProxyDatabase(object):
         proxies = self.load(0)
         num_proxies = len(proxies)
 
-        for i, (proxy, works) in tav.proxy.check.check_proxies(
+        for i, (proxy, works, dt) in tav.proxy.check.check_proxies(
                 proxies, num_threads, timeout):
             if fun is not None:
                 fun(i, num_proxies, proxy, works)
 
             self.cursor.execute('''
                 UPDATE Proxy SET
-                    score=?, checked=(checked+1)
+                    score=?, checked=(checked+1), delay=?
                 WHERE ip=? AND port=?
             ''', (
-                proxy.score + int(works),
+                proxy.score + int(works), dt,
                 proxy.ip, proxy.port
             ))
 
@@ -93,14 +93,15 @@ class SqliteProxyDatabase(object):
                 ip TEXT,
                 port INTEGER,
 
-                score INTEGER,
-                checked INTEGER DEFAULT 0,
-
-                source TEXT,
-
                 country TEXT,
                 anonlevel TEXT,
                 https BOOLEAN,
+
+                source TEXT,
+
+                score INTEGER,
+                checked INTEGER DEFAULT 0,
+                delay INTEGER,
 
                 PRIMARY KEY (ip, port)
             )

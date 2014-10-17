@@ -93,7 +93,7 @@ class ProxyList(object):
         num_proxies = len(self._unchecked)
         working = 0
 
-        for i, (proxy, works) in tav.proxy.check.check_proxies(
+        for i, (proxy, works, dt) in tav.proxy.check.check_proxies(
                 self._unchecked, max_threads, timeout):
             if fun is not None:
                 fun(i, num_proxies, proxy, works)

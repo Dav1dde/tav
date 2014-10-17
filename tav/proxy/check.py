@@ -1,6 +1,7 @@
 from tav.proxy import Proxy
 
 import concurrent.futures
+import datetime
 import requests
 import sys
 
@@ -10,14 +11,20 @@ def check_proxy(proxy, timeout):
         'http': 'http://{p.ip}:{p.port}'.format(p=proxy)
     }
 
+    before = datetime.now()
     try:
         r = requests.get(
             'http://echo.untraced.net', proxies=proxies, timeout=timeout
         )
+        after = datetime.now()
         j = r.json()
     except Exception:
-        return (proxy, False)
-    return (proxy, r.status_code == 200 and j['ip'] == proxy.ip)
+        return (proxy, False, 0)
+    return (
+        proxy,
+        r.status_code == 200 and j['ip'] == proxy.ip,
+        (after - before).total_seconds()
+    )
 
 
 def check_proxies(proxies, num_threads, timeout):

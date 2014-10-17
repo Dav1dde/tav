@@ -4,23 +4,24 @@ import re
 
 class Proxy(Sequence):
     __slots__ = (
-        'ip', 'port', 'score', 'checked',
-        'source', 'country', 'anonlevel', 'https'
+        'ip', 'port', 'country', 'anonlevel', 'https',
+        'source', 'score', 'checked', 'delay'
     )
 
-    def __init__(self, ip, port, score=0, checked=0, source='<unknown>',
-                 country=None, anonlevel=None, https=False):
+    def __init__(self, ip, port, country=None, anonlevel=None, https=False,
+                 source='<unknown>', score=0, checked=0, delay=-1):
         self.ip = ip.strip()
         self.port = int(port)
-
-        self.score = int(score)
-        self.checked = int(checked)
-
-        self.source = source
 
         self.country = country
         self.anonlevel = anonlevel
         self.https = bool(https)
+
+        self.source = source
+
+        self.score = int(score)
+        self.checked = int(checked)
+        self.delay = int(delay)
 
     def is_valid(self):
         return re.match('^(\d{1,3}\.){3}\d{1,3}$', self.ip) is not None
@@ -33,10 +34,10 @@ class Proxy(Sequence):
 
     def __repr__(self):
         return (
-            'Proxy({self.ip!r}, {self.port!r}, score={self.score!r}, '
-            'checked={self.checked!r}, source={self.source!r}, '
-            'country={self.country!r}, anonlevel={self.anonlevel!r}, '
-            'https={self.https!r}, )'.format(self=self)
+            'Proxy({self.ip!r}, {self.port!r}, country={self.country!r}, '
+            'anonlevel={self.anonlevel!r}, https={self.https!r}, '
+            'source={self.source!r}, score={self.score!r}, '
+            'checked={self.checked!r}, delay={self.delay!r})'.format(self=self)
         )
 
     def __getitem__(self, key):
