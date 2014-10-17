@@ -7,8 +7,13 @@ import re
 
 
 def gather():
-    return chain(
-        GatherProxy().get()
+    return filter(
+        Proxy.is_valid,
+        chain(
+            GatherProxy().get(),
+            USProxy().get(),
+            UKProxy().get()
+        )
     )
 
 
@@ -34,6 +39,8 @@ class GatherProxy(ProxyGatherer):
     COUNTRY_URL = 'http://www.gatherproxy.com/proxylistbycountry'
 
     def __init__(self, countries=None):
+        ProxyGatherer.__init__(self)
+
         self.countries = countries
         if self.countries is None:
             self.countries = list(self.get_country_list())
@@ -76,10 +83,37 @@ class GatherProxy(ProxyGatherer):
              country, city, uptime, response_time) in entries:
             ip = self.extract_script_text(ip)
             port = self.extract_script_text(port)
-            ms = int(response_time.text.rstrip('ms'))
 
-            yield Proxy(ip, port, country, ms)
+            yield Proxy(
+                ip, port, country=country, anonlevel=anonlevel.text
+            )
 
     @staticmethod
     def extract_script_text(element):
         return re.search(r'[\d, \.]{2,}', element.findtext('script')).group(0)
+
+
+class USProxy(ProxyGatherer):
+    URL = 'http://www.us-proxy.org'
+
+    def __init__(self):
+        ProxyGatherer.__init__(self)
+
+    def get(self):
+        r = requests.get(self.URL)
+
+        h = html.document_fromstring(r.text)
+        entries = h.cssselect('#proxylisttable tr:nth-child(n+2)')
+
+        for (ip, port, country, country_long,
+             anonlevel, google, https, last_update) in entries:
+            yield Proxy(
+                ip.text, port.text, country=country_long.text,
+                anonlevel=anonlevel.text, https=(https.text.lower() == 'yes')
+            )
+
+
+class UKProxy(USProxy):
+    URL = 'http://free-proxy-list.net/uk-proxy.html'
+
+

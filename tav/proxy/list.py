@@ -27,7 +27,7 @@ class ProxyList(object):
         return c
 
     @staticmethod
-    def progress_fun(current, max, working, proxy):
+    def progress_fun(current, max, proxy, works):
         sys.stdout.write('[?] Checking proxy {}/{} \r'.format(current+1, max))
         sys.stdout.flush()
 
@@ -87,17 +87,17 @@ class ProxyList(object):
     def add_working_proxies(self, proxies):
         self._working.extend(proxies)
 
-    def check_proxies(self, max_threads=50, timeout=(3,3), fun=None):
+    def check_proxies(self, max_threads=50, timeout=(5,5), fun=None):
         fun = self.fun if fun is None else fun
 
         num_proxies = len(self._unchecked)
         working = 0
 
-        for i, proxy in tav.proxy.check.check_proxies(self._unchecked, max_threads, timeout):
+        for i, (proxy, works) in tav.proxy.check.check_proxies(
+                self._unchecked, max_threads, timeout):
             if fun is not None:
-                fun(i, num_proxies, *proxy)
+                fun(i, num_proxies, proxy, works)
 
-            works, proxy = proxy
             if works:
                 self._working.append(proxy)
                 working += 1

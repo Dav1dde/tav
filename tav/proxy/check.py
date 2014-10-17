@@ -12,11 +12,12 @@ def check_proxy(proxy, timeout):
 
     try:
         r = requests.get(
-            'http://google.com', proxies=proxies, timeout=timeout
+            'http://echo.untraced.net', proxies=proxies, timeout=timeout
         )
+        j = r.json()
     except Exception:
-        return (False, proxy)
-    return (r.status_code == 200, proxy)
+        return (proxy, False)
+    return (proxy, r.status_code == 200 and j['ip'] == proxy.ip)
 
 
 def check_proxies(proxies, num_threads, timeout):
@@ -27,11 +28,3 @@ def check_proxies(proxies, num_threads, timeout):
             result = future.result()
 
             yield (i, result)
-
-
-
-
-
-
-
-

@@ -1,4 +1,4 @@
 *.pyc
 *.kdev4
 __pycache__
-proxy/
+/proxy/
