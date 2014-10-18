@@ -7,40 +7,54 @@ import os.path
 import sys
 
 
-PROXY_FILE_ALL = os.path.join(os.path.abspath(os.path.split(__file__)[0]), 'proxy', 'Proxy2.txt')
-PROXY_FILE_WORKING = os.path.join(os.path.abspath(os.path.split(__file__)[0]), 'proxy', 'Working.txt')
-
 PROXY_DATABASE = os.path.join(os.path.abspath(os.path.split(__file__)[0]), 'proxy.db')
 
 
-def database():
-    if not os.path.exists(PROXY_DATABASE):
-        tav.proxy.database.SqliteProxyDatabase.create(PROXY_DATABASE)
+def main():
+    import argparse
 
-    #tav.proxy.database.SqliteProxyDatabase.drop(PROXY_DATABASE)
-    #tav.proxy.database.SqliteProxyDatabase.create(PROXY_DATABASE)
+    parser = argparse.ArgumentParser(
+        description='Twitch Artificial Viewers database updater'
+    )
 
-    with tav.proxy.database.SqliteProxyDatabase(PROXY_DATABASE) as db:
+    parser.add_argument(
+        '--timeout', dest='timeout', type=int, default=5,
+        help='Timeout after which a connection/proxy times out'
+    )
+
+    parser.add_argument(
+        '--db', dest='database', default=PROXY_DATABASE,
+        help='Path to proxy database'
+    )
+
+    parser.add_argument(
+        '--quiet', dest='quiet', action='store_true',
+        help='Don\'t print any status updates'
+    )
+
+    parser.add_argument(
+        'threads', type=int,
+        help='How many threads for checking the proxies'
+    )
+
+    ns = parser.parse_args()
+
+    fun = tav.proxy.list.ProxyList.progress_fun
+    if ns.quiet:
+        fun = None
+
+    if not os.path.exists(ns.database):
+        tav.proxy.database.SqliteProxyDatabase.create(ns.database)
+
+    with tav.proxy.database.SqliteProxyDatabase(ns.database) as db:
         for i, proxy in enumerate(tav.proxy.gather.gather()):
-            sys.stdout.write('[?] Adding proxy {}/? \r'.format(i+1))
-            sys.stdout.flush()
+            if not ns.quiet:
+                sys.stdout.write('[?] Adding proxy {}/? \r'.format(i+1))
+                sys.stdout.flush()
 
             db.add_safe(proxy)
 
-        db.update_score(500, 5, fun=tav.proxy.list.ProxyList.progress_fun)
-
-
-def main():
-    database()
-
-    #pl = tav.proxy.list.ProxyList.from_iterable(tav.proxy.gather.gather(), False)
-
-    #for p in tav.proxy.gather.USProxy().get():
-    #    print(p)
-
-    #with open(PROXY_FILE_ALL, 'w') as f:
-    #    pl.save_to_fobj(None, f)
-
+        db.update_score(ns.threads, ns.timeout, fun=fun)
 
 
 

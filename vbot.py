@@ -5,7 +5,8 @@ import os.path
 import sys
 
 
-PROXY_DATABASE = os.path.join(os.path.abspath(os.path.split(__file__)[0]), 'proxy.db')
+PROXY_DATABASE = \
+    os.path.join(os.path.abspath(os.path.split(__file__)[0]), 'proxy.db')
 
 
 def main():
@@ -16,15 +17,23 @@ def main():
     )
 
     parser.add_argument(
-        '--timeout', dest='timeout',
-        type=int, default=5,
+        '--timeout', dest='timeout', type=int, default=5,
         help='Timeout after which a connection/proxy times out'
     )
 
     parser.add_argument(
-        '--db', dest='database',
-        default=PROXY_DATABASE,
+        '--db', dest='database', default=PROXY_DATABASE,
         help='Path to proxy database'
+    )
+
+    parser.add_argument(
+        '--quiet', dest='quiet', action='store_true',
+        help='Don\'t print any status updates'
+    )
+
+    parser.add_argument(
+        '--score', dest='score', default=0.3, type=float,
+        help='relative score of proxies to use'
     )
 
     parser.add_argument(
@@ -37,10 +46,10 @@ def main():
 
     ns = parser.parse_args()
 
-    bot = tav.bot.ViewerBot(ns.name, timeout=ns.timeout, verbose=True)
+    bot = tav.bot.ViewerBot(ns.name, timeout=ns.timeout, verbose=not ns.quiet)
 
     with tav.proxy.database.SqliteProxyDatabase(PROXY_DATABASE) as db:
-        proxies = db.load(0.3)
+        proxies = db.load(ns.score)
 
     bot.proxies.add_working_proxies(proxies)
 
