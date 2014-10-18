@@ -49,7 +49,7 @@ def main():
     with tav.proxy.database.SqliteProxyDatabase(ns.database) as db:
         for i, proxy in enumerate(tav.proxy.gather.gather()):
             if not ns.quiet:
-                sys.stdout.write('[?] Adding proxy {}    \r'.format(i+1))
+                sys.stdout.write('[?] Adding proxy {}  '.format(i+1))
                 sys.stdout.flush()
 
             db.add_safe(proxy)

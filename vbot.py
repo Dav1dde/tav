@@ -1,4 +1,5 @@
 import tav.proxy.database
+import tav.view
 import tav.bot
 
 import os.path
@@ -41,19 +42,28 @@ def main():
     )
 
     parser.add_argument(
-        'viewers', type=int, help='How many viewers/threads'
+        'threads', type=int, help='Number of threads'
     )
+
+    parser.add_argument(
+        'proxies', type=int, help='Number of proxies'
+    )
+
+    parser.add_argument(
+        'num_urls', type=int, help='Number of urls per proxy'
+    )
+
 
     ns = parser.parse_args()
 
     bot = tav.bot.ViewerBot(ns.name, timeout=ns.timeout, verbose=not ns.quiet)
 
-    with tav.proxy.database.SqliteProxyDatabase(PROXY_DATABASE) as db:
+    with tav.proxy.database.SqliteProxyDatabase(ns.database) as db:
         proxies = db.load(ns.score)
 
     bot.proxies.add_working_proxies(proxies)
 
-    bot.run(ns.viewers)
+    bot.run(ns.threads, ns.proxies, ns.num_urls)
 
 if __name__ == '__main__':
     main()

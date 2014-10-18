@@ -26,8 +26,12 @@ class Proxy(Sequence):
     def is_valid(self):
         return re.match('^(\d{1,3}\.){3}\d{1,3}$', self.ip) is not None
 
+    @property
+    def http(self):
+        return 'http://{self.ip}:{self.port}'.format(self=self)
+
     def __str__(self):
-        return '{}:{}'.format(self.ip, self.port)
+        return '{self.ip}:{self.port}'.format(self=self)
 
     def __unicode__(self):
         return self.__str__()

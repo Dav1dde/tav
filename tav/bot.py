@@ -1,5 +1,6 @@
 from tav.exception import ViewerBotException
 from tav.proxy.list import ProxyList
+import tav.view
 
 import concurrent.futures
 import livestreamer
@@ -39,90 +40,40 @@ class ViewerBot(object):
         self.print('\n[+] {} of {} proxies work!'.format(working, total))
         self.print('[+] Using {} working proxies'.format(len(self.proxies)))
 
-    def run(self, viewers):
-        if viewers > len(self.proxies):
+    def run(self, threads, proxies, num_urls):
+        if proxies*num_urls > len(self.proxies):
             raise ViewerBotException(
                 'Not enough working proxies ({}) for {} viewers'.format(
-                    len(self.proxies), viewers
+                    len(self.proxies), proxies*num_urls
                 )
             )
 
-        self.print('[+] Launching {} viewer-threads'.format(viewers))
+        self.print('[+] Launching {} threads'.format(threads))
 
         proxy_queue = queue.Queue()
         for proxy in self.proxies:
             proxy_queue.put(proxy)
 
-        errors = list()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=viewers) as executor:
-            futures = list()
+        print(proxy_queue.qsize())
 
-            def done_callback(future):
-                try:
-                    result = future.result()
-                except Exception as e:
-                    traceback.print_exc()
-                    errors.append(e)
+        viewer = tav.view.Idea2Viewer(
+            self.url, proxy_queue, num_urls, self.timeout
+        )
+        viewer.init(proxies)
 
-                futures.remove(future)
-                self.print_raw('[?] Connection dropped out. {} left                       \r'.format(len(futures)))
+        print(viewer.jobs.qsize())
 
-            for _ in range(viewers):
-                future = executor.submit(self.view_future, proxy_queue)
-                future.add_done_callback(done_callback)
-                futures.append(future)
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=threads
+        ) as executor:
+            viewer.start(executor, threads)
 
-            while len(futures) > 0 and proxy_queue.qsize() > 0:
-                self.print_raw('[?] {} proxies left                                   \r'.format(proxy_queue.qsize()))
+            while proxy_queue.qsize() > 0:
+                self.print_raw('[?] {} proxies left | {}  \n'.format(proxy_queue.qsize(), viewer.jobs.qsize()))
                 time.sleep(1.0)
 
-        self.print('\n[!] {} Errors'.format(len(errors)))
-
-        #for error in errors:
-        #    self.print(error)
-
-    def view(self, proxy, session):
-        httpproxy = 'http://{}'.format(proxy)
-
-        errors = 0
-        while errors < 50:
-            session.set_option('http-proxy', httpproxy)
-            session.set_option('http-headers', HEADERS)
-            session.set_option('http-timeout', self.timeout)
-
-            try:
-                stream = session.streams(self.url)
-                url = stream['worst'].url
-            except Exception:
-                errors += 5
-            else:
-                break
-        else:
-            # no break -> no url -> broken proxy
-            return
-
-        errors = 0
-        while errors < 50:
-            try:
-                requests.head(
-                    url, headers=HEADERS,
-                    proxies={'http': httpproxy}, timeout=self.timeout
-                )
-            except Exception:
-                errors += 2
-            else:
-                errors = max(0, errors - 1)
-
-            time.sleep(0.5)
-
-    def view_future(self, proxy_queue):
-        session = livestreamer.Livestreamer()
-
-        try:
-            while True:
-                self.view(proxy_queue.get(True, 0.5), session)
-        except queue.Empty:
-            pass
+            print('STARTED')
+        print('DONE')
 
     def print(self, *args, **kwargs):
         if self.verbose:
