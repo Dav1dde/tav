@@ -1,7 +1,10 @@
+from tav.proxy.exception import GatherException
 from tav.proxy import Proxy
 
+from abc import ABCMeta, abstractclassmethod
 from itertools import chain
 from lxml import html
+import requests.exceptions
 import requests
 import re
 
@@ -10,10 +13,7 @@ def gather():
     return filter(
         Proxy.is_valid,
         chain(
-            GatherProxy().get(),
-            USProxy().get(),
-            UKProxy().get(),
-            Samair().get()
+            GatherProxy(), USProxy(), UKProxy(), Samair()
         )
     )
 
@@ -30,9 +30,27 @@ def load_from_files(paths):
     return proxies
 
 
-class ProxyGatherer(object):
-    def get(self):
+class ProxyGatherer(metaclass=ABCMeta):
+    URL = None
+
+    def is_available(self):
+        if self.URL is None:
+            raise GatherException('Invalid Gatherer')
+
+        try:
+            requests.head(self.URL, timeout=5)
+        except requests.exceptions.Timeout:
+            return False
+        return True
+
+    @abstractclassmethod
+    def _get(self):
         raise NotImplementedError('get not implemented')
+
+    def __iter__(self):
+        if self.is_available():
+            return self._get()
+        return iter([])
 
 
 class GatherProxy(ProxyGatherer):
@@ -43,8 +61,6 @@ class GatherProxy(ProxyGatherer):
         ProxyGatherer.__init__(self)
 
         self.countries = countries
-        if self.countries is None:
-            self.countries = list(self.get_country_list())
 
     def get_country_list(self):
         r = requests.get('http://www.gatherproxy.com/proxylistbycountry')
@@ -54,7 +70,10 @@ class GatherProxy(ProxyGatherer):
         for e in h.cssselect('.pc-list li a'):
             yield re.match('[^\(]+', e.text).group(0).strip()
 
-    def get(self):
+    def _get(self):
+        if self.countries is None:
+            self.countries = list(self.get_country_list())
+
 #        print(self.countries)
         for country in self.countries:
             #print(country)
@@ -105,7 +124,7 @@ class USProxy(ProxyGatherer):
     def __init__(self):
         ProxyGatherer.__init__(self)
 
-    def get(self):
+    def _get(self):
         r = requests.get(self.URL)
         h = html.document_fromstring(r.text)
         entries = h.cssselect('#proxylisttable tr:nth-child(n+2)')
@@ -129,7 +148,7 @@ class Samair(ProxyGatherer):
     def __init__(self):
         ProxyGatherer.__init__(self)
 
-    def get(self):
+    def _get(self):
         h = html.parse(self.URL).getroot()
         h.make_links_absolute(self.URL)
         urls = set(
